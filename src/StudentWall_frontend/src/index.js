@@ -7,7 +7,14 @@ function renderSendMessagesForm() {
   sendMessageFormContainer.appendChild(clone);
   let sendMessageForm = document.getElementById('sendMessageForm');
   sendMessageForm.onsubmit = writeNewMessage;
+  sendMessageForm.querySelector('#file').onchange = validateFile;
+  sendMessageForm.querySelector('#deleteFile').onclick = () => {
+    document.getElementById('file').value = null;
+    document.getElementById('fileNameDisplay').innerText = "";
+    document.getElementById('withFile').value = "false"
+  };
 }
+
 
 function renderLoginForm() {
   notLoggedMessageContainer.innerHTML = notLoggedMessage;
@@ -32,18 +39,99 @@ async function getAllMessages() {
   return allMessages
 }
 
+async function validateFile() {
+  let fileInput = document.getElementById('file');
+  let file = fileInput.files[0];
+  let fileName = file.name;
+
+  document.getElementById('withFile').value = "false"
+  
+  if (!file) {
+    console.log('Please select a file.');
+    return {
+      empty: true,
+      oversize: null,
+      blob: null,
+      type: null
+    };
+  }
+  
+  let fileSize = file.size / 1024; // Size in kilobytes
+  let fileType = file.type;
+  let isImage = fileType.startsWith('image/')
+  let isVideo = fileType.startsWith('video/')
+  
+  if (
+    !(isImage) ||
+    fileSize > 1024
+  ) {
+    console.log('The file must be a photo with a maximum size of 1MB.');
+    return {
+      oversize: true,
+      empty: null,
+      blob: null,
+      type: null
+    };
+  }
+  
+  let blob = await new Promise((res, rej) => {
+    let reader = new FileReader();
+    reader.onload = function() {
+      // let blob = new Blob([reader.result], { type: fileType });
+      let unitArr8 = new Uint8Array(reader.result)
+      document.getElementById('fileNameDisplay').innerText = file.name;
+      document.getElementById('withFile').value = "true"
+      // Perform necessary actions with the Blob object
+      console.log('Valid file as Blob:', unitArr8);
+      res(unitArr8)
+    };
+    reader.readAsArrayBuffer(file);
+  })
+
+  return {
+    blob,
+    empty: null,
+    oversize: null,
+    fileName,
+    type: isImage ? 'Image' : 'Video'
+  };
+}
+
 async function writeNewMessage(e) {
 
   e.preventDefault()
 
   console.log(e.target.querySelector("#messageToEditId").value)
 
+  let {empty, oversize, blob, type, fileName} = await validateFile();
+
+  if (oversize) {
+
+    alert('The file must be a photo with a maximum size of 1MB.');
+    return
+  
+  }
+
+  let content = {}
+
+  if (empty) {
+    content = { Text: e.target.querySelector("textarea").value }
+  }
+  else {
+    content[type] = {
+      text: e.target.querySelector("textarea").value,
+      file: blob,
+      fileName,
+    }
+  }
+
   let message = {
     id: Number(e.target.querySelector("#messageToEditId").value),
+    withFile: e.target.querySelector("#withFile").value === 'true' ? true : false,
     userName: localStorage.userName,
     creator: authClient.getIdentity(),
     vote: 0,
-    content: { Text: e.target.querySelector("textarea").value }
+    content
   }
 
   if (Number.isNaN(message.id)) {
@@ -57,6 +145,9 @@ async function writeNewMessage(e) {
 
     await updateMessagesInDom()
 
+    e.target.querySelector("textarea").value = ""
+    document.getElementById('file').value = null
+    document.getElementById('fileNameDisplay').innerText = "";
     e.target.querySelector(".submitButton").innerHTML = "";
     e.target.querySelector(".submitButton").innerText = "Send message";
     e.target.querySelector(".submitButton").style.disabled = false;
@@ -70,10 +161,13 @@ async function writeNewMessage(e) {
   e.target.querySelector(".cancelButton").innerHTML = spinnerDanger;
   e.target.querySelector(".cancelButton").style.disabled = true;
 
-  await studentWallBackend.updateMessage(message.id, message.content);
+  await studentWallBackend.updateMessage(message.id, message.content, message.withFile);
 
   await updateMessagesInDom()
 
+  e.target.querySelector("textarea").value = ""
+  document.getElementById('file').value = null
+  document.getElementById('fileNameDisplay').innerText = blob.name;
   e.target.querySelector(".submitButton").innerHTML = "";
   e.target.querySelector(".submitButton").style.disabled = false;
   e.target.querySelector(".cancelButton").innerHTML = "Cancel";
@@ -108,6 +202,8 @@ function cancelEditForm() {
 
   sendMessageForm.querySelector('#messageToEditId').value = "null"
 
+  sendMessageForm.querySelector('#withFile').value = "false"
+
   sendMessageForm.querySelector("textarea").value = ""
 
 }
@@ -115,6 +211,7 @@ function cancelEditForm() {
 async function setEditForm(messageId, content) {
 
   let sendMessageForm = document.getElementById('sendMessageForm');
+  let contentType = Object.keys(content)[0]
 
   sendMessageForm.querySelector('.submitButton').innerText = "Edit message"
 
@@ -122,7 +219,10 @@ async function setEditForm(messageId, content) {
   sendMessageForm.querySelector('.cancelButton').onclick = cancelEditForm
 
   sendMessageForm.querySelector('#messageToEditId').value = messageId
-  sendMessageForm.querySelector("textarea").value = content
+  sendMessageForm.querySelector('#withFile').value = contentType != 'Text' ? "true" : "false"
+  sendMessageForm.querySelector("textarea").value = contentType != 'Text' ? content[contentType].text : content.Text
+  sendMessageForm.querySelector("#fileNameDisplay").innerText = contentType != 'Text' ? content[contentType].fileName  : ''
+  // sendMessageForm.querySelector("#file").dataset.blob = contentType != 'Text' ? URL.createObjectURL(content[contentType].blob) : ''
 
   const windowHeight = window.innerHeight;
   const scrollPosition = (windowHeight - sendMessageForm.offsetHeight) / 2;
@@ -150,7 +250,7 @@ async function voteMessage(e, voted, messageId) {
 
 }
 
-function renderMessages(messages) {
+async function renderMessages(messages) {
   const fragment = document.createDocumentFragment();
   messagesContainer.innerHTML = "";
 
@@ -161,25 +261,72 @@ function renderMessages(messages) {
   if(messagesContainerTitle.childElementCount > 0) messagesContainerTitle.removeChild(messagesContainerTitle.firstElementChild)
   messagesContainerTitle.appendChild(gettingLastUpdatesTitle)
 
-  messages.forEach(message => {
+  for(let message of messages) {
     let clone = document.importNode(messageTemplate.content, true);
 
     let voted = message.voteBy.includes(localStorage.idSession)
+    let contentType = Object.keys(message.content)[0]
+    let videoHtml = document.createElement('video')
+        videoHtml.className = "videoHtml"
+        videoHtml.controls = true
+    let sourceElement = document.createElement('source');
+        sourceElement.type = "video/mp4"
+    let imageHtml = document.createElement('img')
+        imageHtml.classList.add('imageHtml')
+        imageHtml.classList.add('img-fluid')
     // let identity = authClient
 
     clone.querySelector(".userName").innerText = message.userName;
-    clone.querySelector(".content").innerText = message.content.Text;
+    clone.querySelector(".content").innerText = contentType != 'Text' ? message.content[contentType].text : message.content.Text;
     clone.querySelector(".creator").innerText = message.creator;
     clone.querySelector(".vote").innerText = message.vote;
     clone.querySelector(".deleteButton").dataset.messageId = message.id;
     clone.querySelector(".deleteButton").onclick = (e) => deleteMessage(e, message.id);
     clone.querySelector(".editButton").dataset.messageId = message.id;
-    clone.querySelector(".editButton").onclick = (e) => setEditForm(message.id, message.content.Text);
+    clone.querySelector(".editButton").onclick = (e) => setEditForm(message.id, message.content);
     clone.querySelector(".voteButton").dataset.messageId = message.id;
     clone.querySelector(".voteButton").onclick = (e) => voteMessage(e, voted, message.id);
     clone.querySelector(".voteButton").dataset.voted = "false"
     clone.querySelector(".voteButton").querySelector('.votedIcon').style.display = "none"
     clone.querySelector(".voteButton").querySelector('.noVotedIcon').style.display = "inline"
+
+    if(contentType != 'Text') {
+
+      let typeInLowerCase = contentType.toLowerCase()
+
+      console.log({message})
+      console.log({content: message.content})
+      console.log(typeof message.content[contentType].file)
+
+      clone.querySelector(`.${typeInLowerCase}Container`).style.display = "block"
+
+      let fileReader = new FileReader();
+
+      let dataUrl = await new Promise((res, rej) => {
+
+        fileReader.onload = (event) => {
+          let dataURL = event.target.result;
+          res(dataURL)
+        };
+
+        if(typeInLowerCase == 'video') {
+
+          let videoBlob = new Blob([message.content[contentType].file], { type: 'video/mp4' });
+          res(URL.createObjectURL(videoBlob))
+          return
+
+        }
+  
+        fileReader.readAsDataURL(new Blob([message.content[contentType].file]));
+
+      })
+
+      typeInLowerCase == 'video' ? sourceElement.src = dataUrl : imageHtml.src = dataUrl
+      typeInLowerCase == 'video' ? videoHtml.appendChild(sourceElement) : {}
+
+      clone.querySelector(`.${typeInLowerCase}Container`).appendChild(typeInLowerCase == 'video' ? videoHtml : imageHtml)
+
+    }
 
     if (message.creator != localStorage.idSession) {
       clone.querySelector(".deleteButton").style.display = "none"
@@ -192,7 +339,7 @@ function renderMessages(messages) {
     }
 
     fragment.appendChild(clone);
-  });
+  };
 
   let lastUpdatesTitle = document.createElement('h3')
   lastUpdatesTitle.className = "col-7 bg-dark mb-2 text-white text-start font-rubik"

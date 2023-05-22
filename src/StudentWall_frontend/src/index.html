@@ -4,6 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- <meta http-equiv="Content-Security-Policy" content="media-src https://q6h7l-hyaaa-aaaan-qds4a-cai.icp0.io"> -->
   <base href="/">
   <link rel="icon" href="favicon.ico" />
   <title>Student Wall by MonkeyDDeveloper</title>
@@ -88,6 +89,12 @@
                     title="this is the message update for your team" required></textarea>
                 </div>
               </div>
+              <div class="col-12 my-2">
+                <label for="formFileSm" class="form-label text-white font-rubik">Add a small photo</label>
+                <input class="form-control form-control-sm" id="file" type="file">
+                <button class="form-control form-control-sm font-rubik text-white" id="deleteFile" type="button">Delete file</button>
+                <p id="fileNameDisplay" class="text-white font-rubik"></p>
+              </div>
               <div class="col-md-12 align-self-stretch my-2">
                 <div class="row justify-content-between">
                   <div class="col-xs-12 col-sm-12 col-md-6 my-1 align-self-stretch">
@@ -100,6 +107,7 @@
                   </div>
                 </div>
                 <input type="hidden" id="messageToEditId" value="null">
+                <input type="hidden" id="withFile" value="">
               </div>
             </div>
           </div>
@@ -134,10 +142,20 @@
             </div>
           </div>
           <p class="card-text text-white mx-auto content" style="width: 90%;"></p>
+          <div class="row justify-content-center">
+            <div class="imageContainer col-xs-12 col-sm-12 col-md-7" display="none">
+              
+            </div>
+          </div>
+          <div class="row justify-content-center">
+            <div class="videoContainer col-xs-12 col-sm-12 col-md-7" display="none">
+              
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </template>
 </body>
-
+<!-- <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script> -->
 </html>

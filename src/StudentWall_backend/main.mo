@@ -8,8 +8,16 @@ import Array "mo:base/Array";
 actor StudentWall {
     public type Content = {
         #Text: Text;
-        #Image: Blob;
-        #Video: Blob;
+        #Image: {
+            text: Text;
+            file: Blob;
+            fileName: Text;
+        };
+        #Video: {
+            text: Text;
+            file: Blob;
+            fileName: Text;
+        };
     };
     public type Message = {
         id: Nat;
@@ -79,7 +87,7 @@ actor StudentWall {
         }
     };
 
-    public shared ({ caller }) func updateMessage( messageId : Nat, c : Content): async UpdateMessageResult {
+    public shared ({ caller }) func updateMessage( messageId : Nat, c : Content, withFile : Bool): async UpdateMessageResult {
         try {
             let message = wall.get(Nat.toText(messageId));
 
