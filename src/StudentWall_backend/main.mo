@@ -103,18 +103,67 @@ actor StudentWall {
                         return #err("Solo el creador puede actualizar el mensage");
                     };
 
-                    let updatedMessage = {
-                        id = actualMessage.id;
-                        userName = actualMessage.userName;
-                        vote = actualMessage.vote;
-                        creator = actualMessage.creator;
-                        content = c;
-                        voteBy = actualMessage.voteBy;
+                    var newContent = c;
+                    
+                    let typeNewContent : [Text] = switch c {
+                        case (#Text (newC)) {
+                            ["text", newC]
+                        };
+                        case _ ["media"]
                     };
+
+                    if(withFile and typeNewContent[0] == "text") {
+
+                        let actualContent = actualMessage.content;
+
+                        let content : Content = switch actualContent {
+                            case (#Video (actContent)) {
+                                #Video {
+                                    file = actContent.file;
+                                    text = typeNewContent[1];
+                                    fileName = actContent.fileName;
+                                }
+                            };
+                            case (#Image (actContent)) {
+                                #Image {
+                                    file = actContent.file;
+                                    text = typeNewContent[1];
+                                    fileName = actContent.fileName;
+                                }
+                            };
+                            case (#Text (actContent)) {
+                                #Text(typeNewContent[1])
+                            };
+                        };
+
+                        let updatedMessage = {
+                            id = actualMessage.id;
+                            userName = actualMessage.userName;
+                            vote = actualMessage.vote;
+                            creator = actualMessage.creator;
+                            content = content;
+                            voteBy = actualMessage.voteBy;
+                        };
+
+                        wall.put(Nat.toText(messageId), updatedMessage);
+
+                        return #ok();
+
+                    };
+
+                    let updatedMessage = {
+                            id = actualMessage.id;
+                            userName = actualMessage.userName;
+                            vote = actualMessage.vote;
+                            creator = actualMessage.creator;
+                            content = c;
+                            voteBy = actualMessage.voteBy;
+                        };
 
                     wall.put(Nat.toText(messageId), updatedMessage);
 
                     return #ok();
+
 
                 };
 

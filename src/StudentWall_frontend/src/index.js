@@ -42,10 +42,8 @@ async function getAllMessages() {
 async function validateFile() {
   let fileInput = document.getElementById('file');
   let file = fileInput.files[0];
-  let fileName = file.name;
+  let fileName = file ? file.name : '';
 
-  document.getElementById('withFile').value = "false"
-  
   if (!file) {
     console.log('Please select a file.');
     return {
@@ -134,6 +132,8 @@ async function writeNewMessage(e) {
     content
   }
 
+  console.log({message})
+
   if (Number.isNaN(message.id)) {
 
     console.log('writing message')
@@ -167,7 +167,7 @@ async function writeNewMessage(e) {
 
   e.target.querySelector("textarea").value = ""
   document.getElementById('file').value = null
-  document.getElementById('fileNameDisplay').innerText = blob.name;
+  document.getElementById('fileNameDisplay').innerText = "";
   e.target.querySelector(".submitButton").innerHTML = "";
   e.target.querySelector(".submitButton").style.disabled = false;
   e.target.querySelector(".cancelButton").innerHTML = "Cancel";
@@ -212,6 +212,8 @@ async function setEditForm(messageId, content) {
 
   let sendMessageForm = document.getElementById('sendMessageForm');
   let contentType = Object.keys(content)[0]
+
+  console.log({messageId, content, contentType})
 
   sendMessageForm.querySelector('.submitButton').innerText = "Edit message"
 
