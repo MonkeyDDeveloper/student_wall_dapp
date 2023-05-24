@@ -57,13 +57,13 @@ async function validateFile() {
   let fileSize = file.size / 1024; // Size in kilobytes
   let fileType = file.type;
   let isImage = fileType.startsWith('image/')
-  let isVideo = fileType.startsWith('video/')
+  let isVideo = fileType.startsWith('video/mp4')
   
   if (
-    !(isImage) ||
+    !(isImage || isVideo) ||
     fileSize > 1024
   ) {
-    console.log('The file must be a photo with a maximum size of 1MB.');
+    console.log('The file must be a photo or a video (mp4) with a maximum size of 1MB.');
     return {
       oversize: true,
       empty: null,
@@ -105,7 +105,7 @@ async function writeNewMessage(e) {
 
   if (oversize) {
 
-    alert('The file must be a photo with a maximum size of 1MB.');
+    alert('The file must be a photo or a video (mp4) with a maximum size of 1MB.');
     return
   
   }
@@ -265,10 +265,15 @@ async function renderMessages(messages) {
 
   for(let message of messages) {
     let clone = document.importNode(messageTemplate.content, true);
+    // let videoContainer = clone.querySelector(".videoContainer")
+    // let videoWidth = Number(videoContainer.offsetWidth) / 3.33
 
     let voted = message.voteBy.includes(localStorage.idSession)
     let contentType = Object.keys(message.content)[0]
     let videoHtml = document.createElement('video')
+        videoHtml.style.width = "100%"
+        videoHtml.style.height = "auto"
+        videoHtml.style.objectFit = "cover"
         videoHtml.className = "videoHtml"
         videoHtml.controls = true
     let sourceElement = document.createElement('source');
@@ -311,13 +316,13 @@ async function renderMessages(messages) {
           res(dataURL)
         };
 
-        if(typeInLowerCase == 'video') {
+        // if(typeInLowerCase == 'video') {
 
-          let videoBlob = new Blob([message.content[contentType].file], { type: 'video/mp4' });
-          res(URL.createObjectURL(videoBlob))
-          return
+        //   let videoBlob = new Blob([message.content[contentType].file], { type: 'video/mp4' });
+        //   res(window.URL.createObjectURL(videoBlob))
+        //   return
 
-        }
+        // }
   
         fileReader.readAsDataURL(new Blob([message.content[contentType].file]));
 
